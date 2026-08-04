@@ -49,7 +49,7 @@ func bootstrap() -> void:
 	var twitch_service: TwitchService = root_node.get_node(^"TwitchService")
 	twitch_service.token = TwitchEditorSettings.game_oauth_token
 	twitch_service.oauth_setting = TwitchEditorSettings.game_oauth_setting
-	EditorInterface.add_root_node(root_node)
+	get_tree().edited_scene_root = root_node
 
 
 func _on_to_documentation_pressed() -> void:
