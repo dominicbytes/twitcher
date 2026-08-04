@@ -2,7 +2,7 @@
 @tool
 extends Resource
 
-## Most simple image transformer that doesn't support GIF's uses builtin functionalities of godot.
+## Basic image transformer without GIF support, using Redot's built-in image functionality.
 class_name TwitchImageTransformer
 
 static var _log: TwitchLogger = TwitchLogger.new("TwitchImageTransformer")

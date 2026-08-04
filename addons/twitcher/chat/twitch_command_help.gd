@@ -56,7 +56,7 @@ func _on_command_receive(from_username: String, info: TwitchCommandInfo, args: P
 		twitch_api.send_whisper(message_body, message["to_user_id"], message["from_user_id"])
 
 
-## Needed because when you debug and change code etc. Godot will add the commands multiple times.
+## Needed because Redot can add the commands multiple times while debugging and reloading scripts.
 func cleanup_redundant_commands() -> void:
 	var command_set: Dictionary = {}
 	for command in TwitchCommand.ALL_COMMANDS:

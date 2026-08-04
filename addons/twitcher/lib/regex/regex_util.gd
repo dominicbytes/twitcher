@@ -1,4 +1,4 @@
-## This one should be Godot Core but isn't sadly...
+## This belongs in the engine core but is not available there.
 class_name RegexUtil
 
 static func escape(input:String) -> String:

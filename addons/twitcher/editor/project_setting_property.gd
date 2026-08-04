@@ -43,7 +43,7 @@ func as_select(values: Array[String], optional: bool = true) -> ProjectSettingPr
 	return _add_type_def(TYPE_STRING, enum_hint, hint_string)
 
 
-# Won't work in godot 4.4 the resource is not loaded when you select the project and it will just drop it out of the list.
+# The resource is not loaded when selecting the project, so it would be dropped from the list.
 #func as_resoruce(resource_name: StringName) -> ProjectSettingProperty:
 #	return _add_type_def(TYPE_OBJECT, PROPERTY_HINT_RESOURCE_TYPE, resource_name)
 	

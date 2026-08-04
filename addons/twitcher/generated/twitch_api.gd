@@ -79,7 +79,7 @@ func request(path: String, method: int, body: Variant = "", content_type: String
 	var req: BufferedHTTPClient.RequestData = client.request(api_host + path, method, header, request_body)
 	var res: BufferedHTTPClient.ResponseData = await client.wait_for_request(req)
 
-	# Try to fix Godot TLS Bug
+	# Work around an engine TLS issue.
 	if res.result == 5:
 		return await retry(req, res, path, method, body, content_type, error_count + 1)
 
