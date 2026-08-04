@@ -1,11 +1,15 @@
 # Twitcher
 
+> **Redot compatibility fork:** This branch preserves Twitcher's Godot support while targeting
+> Redot LTS 26.2. The editor plugin, setup wizard, and runtime `TwitchService` are validated with
+> Redot `26.2.stable.official.4f5b14aba`.
+
 [![Godot Asset Library](https://img.shields.io/badge/Godot%20Asset%20Library-Twitcher-blue?style=flat-square)](https://godotengine.org/asset-library/asset/2629) <!-- Replace YOUR_ASSET_ID -->
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://github.com/kanimaru/twitcher/blob/v2/LICENSE) <!-- Assuming MIT License -->
 [![Twitch](https://img.shields.io/badge/Support_on_Twitch-kani_dev-purple?style=flat-square&logo=twitch)](https://www.twitch.tv/kani_dev/)
 [![Documentation](https://img.shields.io/badge/Twitcher-Documentation-purple?style=flat-square&logo=readthedocs)](https://twitcher.kani.dev/)
 
-**Seamless Twitch Integration for Godot 4.4+**
+**Seamless Twitch Integration for Godot 4.4+ and Redot 26.2**
 
 Twitcher provides a comprehensive toolkit to effortlessly connect your Godot Engine games, 
 overlays, or applications to the Twitch platform. Integrate real-time chat, respond to events like 
@@ -28,6 +32,23 @@ follows and subscriptions, manage rewards, handle chat commands, and utilize the
 	*   **Manual (GitHub):** Download from [GitHub](https://github.com/kanimaru/twitcher/releases). Extract the `addons/twitcher` folder into your project's directory.
 	*   **Important:** The addon *must* reside in the exact path `res://addons/twitcher` for internal resources to load correctly.
 2.  **Enable Plugin:** Go to `Project -> Project Settings -> Plugins` and check the `Enable` box next to "Twitcher".
+
+### Redot
+
+Copy `addons/twitcher` to the same path in your Redot project, then enable Twitcher under
+`Project -> Project Settings -> Plugins`. This fork uses the same public API and scene paths as
+upstream Twitcher.
+
+The development project can be checked with:
+
+```powershell
+redot --headless --path . --import
+redot --headless --path . --script res://tests/redot_compatibility.gd
+```
+
+The probe loads the editor plugin, both setup-wizard variants, and an instantiated runtime
+`TwitchService`. Live Twitch authentication and EventSub delivery require Twitch credentials and
+are intentionally separate integration tests.
 
 ## Quick Start & Documentation
 
