@@ -66,7 +66,7 @@ func bootstrap() -> void:
 					subscription.condition[key] = TwitchEditorSettings.default_user.id
 					subscription.set_meta(key + "_user", TwitchEditorSettings.default_user)
 
-	EditorInterface.add_root_node(root_node)
+	get_tree().edited_scene_root = root_node
 
 
 func _set_authorized() -> void:
