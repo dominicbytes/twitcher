@@ -16,7 +16,7 @@ var _is_typed_array: bool:
 	get(): return _is_array && _type.begins_with("#")
 	
 
-## Couple of names from the Twitch API are messed up like keywords for godot or numbers
+## Some Twitch API names conflict with GDScript keywords or begin with numbers.
 func _update_name(val: String) -> void:
 	_original_name = val
 	match val:

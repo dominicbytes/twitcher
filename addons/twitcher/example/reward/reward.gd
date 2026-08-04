@@ -27,7 +27,7 @@ func setup_twitcher() -> void:
 	twitch_reward_service = TwitchRewardService.new(api, twitch_media_loader)
 	await twitch_reward_service.save_reward(TEST_REWARD)
 	
-	# Prevent godot from just quitting to actually cleanup the test reward
+	# Prevent Redot from quitting before the test reward is cleaned up.
 	get_tree().auto_accept_quit = false
 	
 

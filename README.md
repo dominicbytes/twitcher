@@ -1,91 +1,78 @@
-# Twitcher
+# Twitcher for Redot
 
-> **Redot compatibility fork:** This branch preserves Twitcher's Godot support while targeting
-> Redot LTS 26.2. The editor plugin, setup wizard, and runtime `TwitchService` are validated with
-> Redot `26.2.stable.official.4f5b14aba`.
+[![Redot 26.2](https://img.shields.io/badge/Redot-26.2-EA4335?style=flat-square)](https://github.com/Redot-Engine/redot-engine/releases/tag/redot-26.2-stable)
+[![Redot compatibility](https://github.com/dominicbytes/twitcher/actions/workflows/redot-compatibility.yml/badge.svg)](https://github.com/dominicbytes/twitcher/actions/workflows/redot-compatibility.yml)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
-[![Godot Asset Library](https://img.shields.io/badge/Godot%20Asset%20Library-Twitcher-blue?style=flat-square)](https://godotengine.org/asset-library/asset/2629) <!-- Replace YOUR_ASSET_ID -->
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://github.com/kanimaru/twitcher/blob/v2/LICENSE) <!-- Assuming MIT License -->
-[![Twitch](https://img.shields.io/badge/Support_on_Twitch-kani_dev-purple?style=flat-square&logo=twitch)](https://www.twitch.tv/kani_dev/)
-[![Documentation](https://img.shields.io/badge/Twitcher-Documentation-purple?style=flat-square&logo=readthedocs)](https://twitcher.kani.dev/)
+**Twitch integration for Redot 26.2 LTS.**
 
-**Seamless Twitch Integration for Godot 4.4+ and Redot 26.2**
+Twitcher for Redot connects Redot games, overlays, and applications to Twitch. It supports
+EventSub, the Helix API, chat commands, OAuth flows, channel-point rewards, emotes, badges, and
+Cheermotes.
 
-Twitcher provides a comprehensive toolkit to effortlessly connect your Godot Engine games, 
-overlays, or applications to the Twitch platform. Integrate real-time chat, respond to events like 
-follows and subscriptions, manage rewards, handle chat commands, and utilize the full Twitch API with ease.
+This is an independent Redot project derived from
+[kani_dev's original Twitcher](https://github.com/kanimaru/twitcher). It is maintained separately
+and is not intended to merge back into the original project. Twitcher for Redot preserves the
+original public API and `res://addons/twitcher` paths while maintaining and testing Redot support.
 
-## Key Features
+## Features
 
-*   **Modern Twitch Integration:** Utilizes EventSub for real-time events and the Helix API for robust interactions (moving away from deprecated IRC features for core functionality).
-*   **Simplified Authentication:** Supports multiple OAuth flows (Authorization Code, Client Credentials, Device Code) with helpers for secure token management.
-*   **Easy Event Handling:** Dedicated `TwitchEventListener` node to react to specific EventSub events (Follows, Subs, Cheers, Rewards, etc.).
-*   **API Coverage:** Auto-generated, type-safe wrapper methods for the Twitch Helix REST API.
-*   **Chat Command Framework:** `TwitchCommand` nodes for defining and handling chat commands with permission checks. Includes an automated `!help` command generator.
-*   **Editor Tools:** Built-in helpers for configuring OAuth Scopes, EventSub subscriptions, and testing credentials directly within the Godot editor.
-*   **Media Loading:** Handles fetching and caching Twitch Emotes (including animated GIFs via optional transformers), Badges, and Cheermotes as Godot `SpriteFrames`.
+- EventSub listeners for follows, subscriptions, cheers, rewards, and other Twitch events
+- Generated, typed wrappers for the Twitch Helix REST API
+- OAuth Authorization Code, Client Credentials, and Device Code flows
+- Twitch chat commands with permission checks and help generation
+- Redot editor tools for authentication, scopes, EventSub configuration, and rewards
+- Twitch emote, badge, and Cheermote loading as Redot `SpriteFrames`
+
+## Requirements
+
+- [Redot 26.2 LTS](https://github.com/Redot-Engine/redot-engine/releases/tag/redot-26.2-stable)
+- A Twitch developer application for features that require authentication
 
 ## Installation
 
-1.  **Get the Addon:**
-	*   **Recommended (AssetLib):** Search for "Twitcher" in the Godot AssetLib tab and click Download.
-	*   **Manual (GitHub):** Download from [GitHub](https://github.com/kanimaru/twitcher/releases). Extract the `addons/twitcher` folder into your project's directory.
-	*   **Important:** The addon *must* reside in the exact path `res://addons/twitcher` for internal resources to load correctly.
-2.  **Enable Plugin:** Go to `Project -> Project Settings -> Plugins` and check the `Enable` box next to "Twitcher".
+1. Download or clone this repository.
+2. Copy `addons/twitcher` into your Redot project at exactly `res://addons/twitcher`.
+3. In Redot, open **Project → Project Settings → Plugins** and enable **Twitcher for Redot**.
+4. Open **Project → Tools → Twitcher → Setup** to configure your Twitch application and scopes.
 
-### Redot
+## Documentation
 
-Copy `addons/twitcher` to the same path in your Redot project, then enable Twitcher under
-`Project -> Project Settings -> Plugins`. This fork uses the same public API and scene paths as
-upstream Twitcher.
+The [upstream Twitcher documentation](https://twitcher.kani.dev/) describes the public API and
+core workflows shared by this fork. Where its editor screenshots or engine-version guidance
+differs, use Redot 26.2 and the setup path above.
 
-The development project can be checked with:
+## Animated emotes
+
+Twitcher offers three image transformers:
+
+- `TwitchImageTransformer`: static images; works without external tools
+- `MagickImageTransformer`: GIF support through a separate
+  [ImageMagick](https://imagemagick.org/) installation
+- `NativeImageTransformer`: experimental GDScript GIF support based on
+  [vbousquet/godot-gif-importer](https://github.com/vbousquet/godot-gif-importer)
+
+## Development and validation
+
+Run the Redot compatibility checks from the repository root:
 
 ```powershell
 redot --headless --path . --import
 redot --headless --path . --script res://tests/redot_compatibility.gd
 ```
 
-The probe loads the editor plugin, both setup-wizard variants, and an instantiated runtime
-`TwitchService`. Live Twitch authentication and EventSub delivery require Twitch credentials and
-are intentionally separate integration tests.
+The probe loads the editor plugin and setup scenes and instantiates the runtime `TwitchService`.
+Live OAuth, Twitch API, and EventSub delivery require credentials and remain integration tests.
 
-## Quick Start & Documentation
-
-1.  **Run Setup Wizard:** After enabling the plugin, the easiest way to configure authentication is via the Setup Wizard:
-	*   Navigate to `Project -> Tools -> Twitcher Setup`.
-	*   Follow the on-screen instructions to enter your Twitch Application credentials and select required OAuth scopes.
-2.  **Explore the Documentation:** For detailed guides, tutorials, API reference, and advanced configuration (like setting up GIF support), please refer to the **[Full Twitcher Documentation](https://twitcher.kani.dev)**.
-
-## Image Transformers (for Animated Emotes)
-
-Godot doesn't natively support animated GIFs. Twitcher uses configurable "Image Transformers" to handle them:
-
-*   **`TwitchImageTransformer` (Default):** Static images only. Works out-of-the-box.
-*   **`MagickImageTransformer`:** Requires [ImageMagick](https://imagemagick.org) to be installed separately. Converts GIFs to `SpriteFrames`.
-*   **`NativeImageTransformer`:** Experimental, uses native gdscript implementation (based on [vbousquet/godot-gif-importer](https://github.com/vbousquet/godot-gif-importer)). No external programs needed, but may struggle with malformed GIFs.
-
-**See the [Full Documentation](https://twitcher.kani.dev/core-nodes/twitch-image-transformer.html)** for instructions on how to configure and use `MagickImageTransformer` or `NativeImageTransformer`.
-
-## Support
-
-Need help or have questions? Find kani_dev streaming development and answering questions on [Twitch](https://www.twitch.tv/kani_dev/). Feel free to open an Issue on GitHub for bugs or feature requests.
-
-## Development
-
-To prevent accidental commit of your Twitch `client_id` and `client_secret`, this repository includes a pre-commit hook and a GitHub Action.
-This is only for Twitcher development. In your project it's fine to commit them because they got encrypted beforehand.
-When you want to share your project with other devs, you should also share the key so that the other devs can use 
-the credentials. 
-
-### Setting up the local Pre-commit Hook
-
-To enable the local pre-commit hook that automatically clears secrets from your OAuth settings before committing, run the following command in your terminal:
+To enable the local secret-clearing pre-commit hook:
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
-## License
+## Original project and license
 
-Twitcher is released under the MIT License. See the [LICENSE](https://github.com/kanimaru/twitcher/blob/master/LICENSE) file for details.
+Twitcher for Redot is derived from the original
+[kanimaru/twitcher](https://github.com/kanimaru/twitcher), created by kani_dev. This repository is
+an independent Redot continuation and does not replace or represent the original project. Both are
+distributed under the [MIT License](LICENSE).
