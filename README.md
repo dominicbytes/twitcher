@@ -76,3 +76,17 @@ Twitcher for Redot is derived from the original
 [kanimaru/twitcher](https://github.com/kanimaru/twitcher), created by kani_dev. This repository is
 an independent Redot continuation and does not replace or represent the original project. Both are
 distributed under the [MIT License](LICENSE).
+
+## Notes
+
+I vibe coded this in GPT Sol 5.6. Use at your own risk.
+
+## About Dominic Bytes
+
+Greetings! I am Dominic Bytes, the synth walker. I hail from the distant future. Where brains occupy robot bodies, time travel is a trip to the corner store, and the neon glow of our attire is powered by the light of our souls. Join me on a 1.21 gigawatt powered journey of chill vibes with gaming, anime, movies, and more!
+
+- [Website](https://dominicbytes.carrd.co/)
+- [X](https://x.com/DominicBytes)
+- [Twitch](https://www.twitch.tv/dominicbytes)
+- [YouTube](http://www.youtube.com/@DominicBytes)
+- [Kick](https://kick.com/dominicbytes)
