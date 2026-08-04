@@ -175,7 +175,7 @@ func stop_listening() -> void:
 func send_response(client: Client, response_code : String, body : PackedByteArray) -> void:
 	var peer: StreamPeerTCP = client.peer
 	peer.put_data(("HTTP/1.1 %s\r\n" % response_code).to_utf8_buffer())
-	peer.put_data("Server: Godot Engine (Twitcher)\r\n".to_utf8_buffer())
+	peer.put_data("Server: Redot Engine (Twitcher)\r\n".to_utf8_buffer())
 	peer.put_data(("Content-Length: %d\r\n"% body.size()).to_utf8_buffer())
 	peer.put_data("Connection: close\r\n".to_utf8_buffer())
 	peer.put_data("Content-Type: text/html charset=UTF-8\r\n".to_utf8_buffer())

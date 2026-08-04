@@ -20,7 +20,7 @@ static func create_media_loader(api: TwitchAPI) -> TwitchMediaLoader:
 	return media_loader
 
 
-## Ugly but no better way in godot right now
+## Redot currently provides no cleaner equivalent.
 static func new_scene() -> bool:
 	var base_control: Control = EditorInterface.get_base_control()
 	var title_bar: Node = base_control.find_child("*EditorTitleBar*", true, false)

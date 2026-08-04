@@ -340,7 +340,7 @@ func _process_implicit_request(client: OAuthHTTPServer.Client, server: OAuthHTTP
 							body: JSON.stringify(params)
 						})
 						.then(() => window.close())
-						.catch(err => console.error('Failed to send payload to Godot:', err));
+						.catch(err => console.error('Failed to send payload to Redot:', err));
 					</script>
 				</body>
 			</html>""" % oauth_setting.redirect_url

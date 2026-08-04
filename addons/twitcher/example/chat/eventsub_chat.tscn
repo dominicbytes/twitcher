@@ -220,5 +220,5 @@ metadata/_custom_type_script = "uid://bmluckfvgm1c2"
 
 [node name="TwitchCommandRespond" type="Node" parent="TwitcherCommand" unique_id=1368511142]
 script = ExtResource("22_viivw")
-respond_message = "You can find Twitcher here: https://github.com/kanimaru/twitcher/"
+respond_message = "You can find Twitcher for Redot here: https://github.com/dominicbytes/twitcher/"
 metadata/_custom_type_script = "uid://dyslkjssasxnk"

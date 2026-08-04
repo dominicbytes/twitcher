@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Twitcher"
+config/name="Twitcher for Redot"
 run/main_scene="uid://5lyf04rwo1mf"
 config/features=PackedStringArray("26.2", "Redot")
 config/icon="res://addons/twitcher/assets/twitcher-icon.svg"
