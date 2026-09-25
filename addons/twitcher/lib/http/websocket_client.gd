@@ -45,6 +45,7 @@ var is_closed: bool:
 
 var _peer: WebSocketPeer = WebSocketPeer.new()
 var _tries: int
+var _generation: int
 
 
 func open_connection() -> void:
@@ -61,14 +62,18 @@ func wait_connection_established() -> void:
 func _establish_connection() -> void:
 	if _is_already_connecting || not is_closed: return
 	_is_already_connecting = true
-	var wait_time = pow(2, _tries)
+	var generation := _generation
+	var wait_time = minf(pow(2, _tries), 60.0)
 	_logDebug("Wait %s before connecting" % [wait_time])
 	await get_tree().create_timer(wait_time, true, false, true).timeout
+	if generation != _generation or not auto_reconnect or not is_inside_tree():
+		_is_already_connecting = false
+		return
 	_logInfo("Connecting to %s" % connection_url)
 	var err = _peer.connect_to_url(connection_url)
 	if err != OK:
 		logError("Couldn't connect cause of %s" % [error_string(err)])
-	_tries += 1
+	_tries = mini(_tries + 1, 6)
 	_is_already_connecting = false
 
 
@@ -77,6 +82,8 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
+	_generation += 1
+	auto_reconnect = false
 	if not is_open: return
 	_peer.close(1000, "resource got freed")
 
@@ -118,6 +125,7 @@ func send_text(message: String) -> Error:
 
 func close(status: int = 1000, message: String = "Normal Closure") -> void:
 	_logDebug("Websocket activly closed")
+	_generation += 1
 	auto_reconnect = false
 	_peer.close(status, message)
 

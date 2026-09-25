@@ -8,45 +8,53 @@ permissions:
   contents: read
 
 jobs:
-  redot-26-2:
+  redot-26-3:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Download Redot 26.2
+      - name: Download Redot 26.3 RC1
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/redot"
           curl --fail --location --retry 3 \
             --output "$RUNNER_TEMP/redot/redot.zip" \
-            https://github.com/Redot-Engine/redot-engine/releases/download/redot-26.2-stable/Redot_v26.2-stable_linux_x64.zip
-          echo "f474d890806c41af15513cf5a8600243e241882e11b68dbb95660e3465b5b1e4  $RUNNER_TEMP/redot/redot.zip" | sha256sum --check
+            https://github.com/Redot-Engine/redot-engine/releases/download/redot-26.3-rc.1/Redot_v26.3-rc.1_linux_x64.zip
+          echo "8287959d16515321474c0f794d6671873e37173506d6feee5ec517443c1d486c  $RUNNER_TEMP/redot/redot.zip" | sha256sum --check
           unzip -q "$RUNNER_TEMP/redot/redot.zip" -d "$RUNNER_TEMP/redot/bin"
           REDOT_BIN="$(find "$RUNNER_TEMP/redot/bin" -type f -iname 'redot*' | head -n 1)"
           chmod +x "$REDOT_BIN"
           echo "REDOT_BIN=$REDOT_BIN" >> "$GITHUB_ENV"
 
       - name: Verify engine version
-        run: '"$REDOT_BIN" --version'
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$REDOT_BIN" --version | tee "$RUNNER_TEMP/redot-version.log"
+          grep -F '26.3.rc.1.official.704b10a8e' "$RUNNER_TEMP/redot-version.log"
 
       - name: Import project and compile addon
         shell: bash
         run: |
           set -euo pipefail
-          "$REDOT_BIN" --headless --path . --import 2>&1 | tee "$RUNNER_TEMP/redot-import.log"
-          if grep -E 'SCRIPT ERROR|Parse Error|Failed to load script|Failed loading resource' "$RUNNER_TEMP/redot-import.log"; then
+          timeout 60s "$REDOT_BIN" --headless --path . --import --quit-after 10000 2>&1 | tee "$RUNNER_TEMP/redot-import.log"
+          if grep -E 'ERROR:|WARNING:|Parse Error|Failed to load script|Failed loading resource' "$RUNNER_TEMP/redot-import.log"; then
             exit 1
           fi
 
-      - name: Run compatibility probe
+      - name: Run lifecycle, reconnect, and compatibility probes
         shell: bash
         run: |
           set -euo pipefail
-          "$REDOT_BIN" --headless --path . --script res://tests/redot_compatibility.gd 2>&1 | tee "$RUNNER_TEMP/redot-probe.log"
-          if grep -E 'SCRIPT ERROR|Parse Error|Failed to load script|Failed loading resource' "$RUNNER_TEMP/redot-probe.log"; then
-            exit 1
-          fi
-          grep -F 'Twitcher Redot compatibility probe passed' "$RUNNER_TEMP/redot-probe.log"
+          for script in eventsub_lifecycle eventsub_up05 redot_compatibility; do
+            log="$RUNNER_TEMP/redot-$script.log"
+            timeout 60s "$REDOT_BIN" --headless --path . --script "res://tests/$script.gd" --quit-after 10000 2>&1 | tee "$log"
+            if grep -E 'ERROR:|WARNING:|Parse Error|Failed to load script|Failed loading resource' "$log"; then
+              exit 1
+            fi
+            grep -E 'TWITCHER (LIFECYCLE|UP05) PASS|Twitcher Redot compatibility probe passed' "$log"
+          done

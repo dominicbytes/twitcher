@@ -1,10 +1,10 @@
 # Twitcher for Redot
 
-[![Redot 26.2](https://img.shields.io/badge/Redot-26.2-EA4335?style=flat-square)](https://github.com/Redot-Engine/redot-engine/releases/tag/redot-26.2-stable)
+[![Redot 26.3 RC1 target](https://img.shields.io/badge/Redot-26.3%20RC1-EA4335?style=flat-square)](https://github.com/Redot-Engine/redot-engine/releases/tag/redot-26.3-rc.1)
 [![Redot compatibility](https://github.com/dominicbytes/twitcher/actions/workflows/redot-compatibility.yml/badge.svg)](https://github.com/dominicbytes/twitcher/actions/workflows/redot-compatibility.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
-**Twitch integration for Redot 26.2 LTS.**
+**Twitch integration targeting Redot 26.3 RC1.**
 
 Twitcher for Redot connects Redot games, overlays, and applications to Twitch. It supports
 EventSub, the Helix API, chat commands, OAuth flows, channel-point rewards, emotes, badges, and
@@ -26,7 +26,7 @@ original public API and `res://addons/twitcher` paths while maintaining and test
 
 ## Requirements
 
-- [Redot 26.2 LTS](https://github.com/Redot-Engine/redot-engine/releases/tag/redot-26.2-stable)
+- [Redot 26.3 RC1](https://github.com/Redot-Engine/redot-engine/releases/tag/redot-26.3-rc.1) is the current validation target; 26.2 LTS remains a historical baseline.
 - A Twitch developer application for features that require authentication
 
 ## Installation
@@ -40,7 +40,7 @@ original public API and `res://addons/twitcher` paths while maintaining and test
 
 The [upstream Twitcher documentation](https://twitcher.kani.dev/) describes the public API and
 core workflows shared by this fork. Where its editor screenshots or engine-version guidance
-differs, use Redot 26.2 and the setup path above.
+differs, use the setup path above. The 26.3 RC1 script runtime has been exercised, but editor/import and release certification are not complete.
 
 ## Animated emotes
 
@@ -62,7 +62,7 @@ redot --headless --path . --script res://tests/redot_compatibility.gd
 ```
 
 The probe loads the editor plugin and setup scenes and instantiates the runtime `TwitchService`.
-Live OAuth, Twitch API, and EventSub delivery require credentials and remain integration tests.
+On Windows, Redot 26.3 RC1's headless editor import has reproduced an external shutdown crash, including in an empty project. A completed import cache allowed the script-runtime probes to run on 26.3; it does not certify the editor. The EventSub load, instance, and lifecycle regressions now exit without resource leaks; the 24-check UP-05 suite and compatibility probe still emit an ObjectDB shutdown warning, so their strict process gate remains failed. See [26.3 validation](docs/validation-26.3.md). Live OAuth, Twitch API, and EventSub delivery require credentials and remain integration tests.
 
 To enable the local secret-clearing pre-commit hook:
 

@@ -1,5 +1,5 @@
 @tool
-extends Object
+extends RefCounted
 
 class_name TwitchEventsubDefinition
 
@@ -98,7 +98,9 @@ var scopes: Array[StringName]
 ## Link to the twitch documentation
 var documentation_link: String
 ## The actual script that represents the return value
-var response_script: Script
+var response_script: Script:
+	get(): return load(_response_script_path)
+var _response_script_path: String
 
 
 func _init(typ: Type, val: StringName, ver: StringName, cond: Array[StringName], scps: Array[StringName], doc_link: String, resp_script: Script):
@@ -108,7 +110,7 @@ func _init(typ: Type, val: StringName, ver: StringName, cond: Array[StringName],
 	conditions = cond
 	scopes = scps
 	documentation_link = doc_link
-	response_script = resp_script
+	_response_script_path = resp_script.resource_path
 
 ## Get a human readable name of it
 func get_readable_name() -> String:
