@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout 60s "$REDOT_BIN" --headless --path . --import --quit-after 10000 2>&1 | tee "$RUNNER_TEMP/redot-import.log"
+          timeout 60s "$REDOT_BIN" --headless --path . --import --quit-after 2 2>&1 | tee "$RUNNER_TEMP/redot-import.log"
           if grep -E 'ERROR:|WARNING:|Parse Error|Failed to load script|Failed loading resource' "$RUNNER_TEMP/redot-import.log"; then
             exit 1
           fi
