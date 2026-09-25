@@ -99,6 +99,8 @@ signal message_received(message: Variant)
 
 var _client: WebsocketClient = WebsocketClient.new()
 var _test_client : WebsocketClient = WebsocketClient.new()
+var _client_was_parented: bool
+var _test_client_was_parented: bool
 ## Swap over client in case Twitch sends us the message for a new server.
 ## See: https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#reconnect-message
 var _swap_over_client : WebsocketClient
@@ -107,6 +109,9 @@ var session: Session
 ## Holds the messages that was processed already.
 ## Key: MessageID  Value: Timestamp
 var eventsub_messages: Dictionary = {}
+const MAX_RECENT_MESSAGE_IDS: int = 5000
+var _message_order: Array[Dictionary] = []
+var _message_head: int
 var last_keepalive: int
 var is_open: bool:
 	get(): return _client.is_open
@@ -133,19 +138,29 @@ class SubscriptionAction extends RefCounted:
 
 func _init() -> void:
 	_client.connection_url = eventsub_live_server_url
-	_client.message_received.connect(_data_received)
+	_client.message_received.connect(_data_received.bind(_client))
 	_client.connection_established.connect(_on_connection_established)
-	_client.connection_closed.connect(_on_connection_closed)
+	_client.connection_closed.connect(_on_connection_closed.bind(_client))
 	_test_client.connection_url = eventsub_test_server_url
-	_test_client.message_received.connect(_data_received)
+	_test_client.message_received.connect(_data_received.bind(_test_client))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		if not _client_was_parented and is_instance_valid(_client):
+			_client.free()
+		if not _test_client_was_parented and is_instance_valid(_test_client):
+			_test_client.free()
 
 
 func _ready() -> void:
 	_client.name = "Websocket Client"
 	add_child(_client)
+	_client_was_parented = true
 	if use_test_server:
 		_test_client.name = "Websocket Client Test"
 		add_child(_test_client)
+		_test_client_was_parented = true
 	if api == null: api = TwitchAPI.instance
 
 
@@ -154,7 +169,29 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
+	close_connection()
 	if instance == self: instance = null
+
+
+func _process(_delta: float) -> void:
+	_check_keepalive(Time.get_ticks_msec())
+
+
+func _check_keepalive(now_msec: int) -> void:
+	if not _should_connect or session == null or not _client.is_open or last_keepalive <= 0:
+		return
+	if not _keepalive_timed_out(now_msec):
+		return
+	_log.e("EventSub keepalive timed out; reconnecting and resubscribing")
+	session = null
+	last_keepalive = 0
+	_discard_pending_handover()
+	_client.close(1000, "EventSub keepalive timeout")
+	_client.auto_reconnect = true
+
+
+func _keepalive_timed_out(now_msec: int) -> bool:
+	return session != null and last_keepalive > 0 and now_msec - last_keepalive > maxi(10, session.keepalive_timeout_seconds) * 1000
 
 
 ## Propergated call from twitch service
@@ -196,11 +233,28 @@ func _on_connection_established() -> void:
 	_execute_action_stack()
 
 
-func _on_connection_closed() -> void:
-	session = null
+func _on_connection_closed(source: WebsocketClient) -> void:
+	if source == _swap_over_client:
+		_discard_pending_handover()
+		return
+	if source == _client:
+		session = null
+		last_keepalive = 0
+		_discard_pending_handover()
+
+
+func _discard_pending_handover() -> void:
+	_swap_over_process = false
+	if _swap_over_client == null:
+		return
+	var pending := _swap_over_client
+	_swap_over_client = null
+	pending.close()
+	pending.queue_free()
 
 
 func open_connection() -> void:
+	_should_connect = true
 	if _client.is_closed:
 		_client.open_connection()
 	if _test_client.is_closed && use_test_server:
@@ -208,10 +262,12 @@ func open_connection() -> void:
 
 
 func close_connection() -> void:
-	if not _client.is_closed:
-		_client.close()
-	if not _test_client.is_closed:
-		_test_client.close()
+	_should_connect = false
+	if is_instance_valid(_client): _client.close()
+	if is_instance_valid(_test_client): _test_client.close()
+	_discard_pending_handover()
+	session = null
+	last_keepalive = 0
 
 
 ## Add a new subscription
@@ -318,7 +374,9 @@ func _unsubscribe(subscription: TwitchEventsubConfig) -> bool:
 	return response.error || response.response_code != 200
 
 
-func _data_received(data : PackedByteArray) -> void:
+func _data_received(data : PackedByteArray, source: WebsocketClient = null) -> void:
+	if source != null and source != _client and source != _swap_over_client and source != _test_client:
+		return
 	var message_str : String = data.get_string_from_utf8()
 	var message_json : Dictionary = JSON.parse_string(message_str)
 	if not message_json.has("metadata"):
@@ -329,19 +387,29 @@ func _data_received(data : PackedByteArray) -> void:
 	var timestamp_str: String = metadata.message_timestamp
 	var timestamp: int = Time.get_unix_time_from_datetime_string(timestamp_str)
 
-	if(_message_got_processed(id) || _message_is_to_old(timestamp)):
+	var now_msec := Time.get_ticks_msec()
+	_cleanup(now_msec)
+	if _message_is_to_old(timestamp):
+		return
+	if metadata.message_type in ["session_keepalive", "notification"]:
+		last_keepalive = now_msec
+	if _message_got_processed(id):
 		return
 
-	eventsub_messages[id] = timestamp
-	last_keepalive = Time.get_ticks_msec()
+	_remember_message(id, now_msec)
 
 	match metadata.message_type:
 		"session_welcome":
+			if _swap_over_process and source != _swap_over_client:
+				return
 			var welcome_message: TwitchWelcomeMessage = TwitchWelcomeMessage.new(message_json)
 			session = welcome_message.payload.session
+			last_keepalive = now_msec
 			session_id_received.emit(session.id)
 			_log.i("Session established %s" % session.id)
 			message_received.emit(welcome_message)
+			if _swap_over_client != null and source == _swap_over_client:
+				_complete_handover()
 		"session_keepalive":
 			# Notification from server that the connection is still alive
 			var keep_alive_message: TwitchKeepaliveMessage = TwitchKeepaliveMessage.new(message_json)
@@ -362,35 +430,56 @@ func _data_received(data : PackedByteArray) -> void:
 			event.emit(notification_message.payload.subscription.type,
 				notification_message.payload.event)
 			event_received.emit(Event.new(notification_message))
-	_cleanup()
 
 
 func _handle_reconnect(reconnect_message: TwitchReconnectMessage):
+	if not _should_connect or _swap_over_process:
+		return
 	_log.i("Session is forced to reconnect")
 	_swap_over_process = true
 	var reconnect_url = reconnect_message.payload.session.reconnect_url
 	_swap_over_client = WebsocketClient.new()
-	_swap_over_client.message_received.connect(_data_received)
+	_swap_over_client.message_received.connect(_data_received.bind(_swap_over_client))
 	_swap_over_client.connection_established.connect(_on_connection_established)
+	_swap_over_client.connection_closed.connect(_on_connection_closed.bind(_swap_over_client))
 	_swap_over_client.connection_url = reconnect_url
 	add_child(_swap_over_client)
 	_swap_over_client.open_connection()
-	await session_id_received
-	_client.close(1000, "Closed cause of reconnect.")
-	remove_child(_client)
+
+
+func _complete_handover() -> void:
+	if not _should_connect or _swap_over_client == null:
+		return
+	var old_client := _client
+	old_client.connection_closed.disconnect(_on_connection_closed.bind(old_client))
+	old_client.close(1000, "Closed cause of reconnect.")
+	remove_child(old_client)
 	_client = _swap_over_client
 	_swap_over_client = null
+	_client.connection_url = eventsub_live_server_url
+	old_client.queue_free()
 	_swap_over_process = false
-	_log.i("Session reconnected on %s" % reconnect_url)
+	_log.i("Session reconnected on %s" % _client.connection_url)
 
 
 ## Cleanup old messages that won't be processed anymore cause of time to prevent a
 ## memory problem on long runinng applications.
-func _cleanup() -> void:
-	for message_id in eventsub_messages.keys():
-		var timestamp = eventsub_messages[message_id]
-		if _message_is_to_old(timestamp):
-			eventsub_messages.erase(message_id)
+func _cleanup(now_msec: int) -> void:
+	while _message_head < _message_order.size():
+		var oldest: Dictionary = _message_order[_message_head]
+		if now_msec - int(oldest.time) <= ignore_message_eventsub_in_seconds * 1000 and eventsub_messages.size() <= MAX_RECENT_MESSAGE_IDS:
+			break
+		_message_head += 1
+		eventsub_messages.erase(oldest.id)
+	if _message_head >= 1024 and _message_head * 2 >= _message_order.size():
+		_message_order = _message_order.slice(_message_head)
+		_message_head = 0
+
+
+func _remember_message(message_id: String, now_msec: int) -> void:
+	eventsub_messages[message_id] = now_msec
+	_message_order.append({"id": message_id, "time": now_msec})
+	_cleanup(now_msec)
 
 
 func _message_got_processed(message_id: String) -> bool:
