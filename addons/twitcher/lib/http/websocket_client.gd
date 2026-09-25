@@ -46,6 +46,7 @@ var is_closed: bool:
 var _peer: WebSocketPeer = WebSocketPeer.new()
 var _tries: int
 var _generation: int
+var _connection_wait: SceneTreeTimer
 
 
 func open_connection() -> void:
@@ -65,7 +66,11 @@ func _establish_connection() -> void:
 	var generation := _generation
 	var wait_time = minf(pow(2, _tries), 60.0)
 	_logDebug("Wait %s before connecting" % [wait_time])
-	await get_tree().create_timer(wait_time, true, false, true).timeout
+	var wait := get_tree().create_timer(wait_time, true, false, true)
+	_connection_wait = wait
+	await wait.timeout
+	if _connection_wait == wait:
+		_connection_wait = null
 	if generation != _generation or not auto_reconnect or not is_inside_tree():
 		_is_already_connecting = false
 		return
@@ -84,8 +89,16 @@ func _enter_tree() -> void:
 func _exit_tree() -> void:
 	_generation += 1
 	auto_reconnect = false
+	_cancel_connection_wait()
 	if not is_open: return
 	_peer.close(1000, "resource got freed")
+
+
+func _cancel_connection_wait() -> void:
+	if _connection_wait != null:
+		var wait := _connection_wait
+		_connection_wait = null
+		wait.timeout.emit()
 
 
 func _process(delta: float) -> void:
@@ -127,6 +140,7 @@ func close(status: int = 1000, message: String = "Normal Closure") -> void:
 	_logDebug("Websocket activly closed")
 	_generation += 1
 	auto_reconnect = false
+	_cancel_connection_wait()
 	_peer.close(status, message)
 
 
