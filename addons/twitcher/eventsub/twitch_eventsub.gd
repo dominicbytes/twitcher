@@ -202,7 +202,7 @@ func do_setup() -> void:
 
 ## Propergated call from twitch service
 func do_unsetup() -> void:
-	for subscription in _subscriptions:
+	for subscription in _subscriptions.duplicate():
 		unsubscribe(subscription)
 	close_connection()
 	_log.i("Eventsub unsetup")
