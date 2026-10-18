@@ -15,15 +15,15 @@ func _run() -> void:
 	var now := Time.get_ticks_msec()
 	eventsub.session = TwitchEventsub.Session.new({"id": "fixture", "status": "connected", "keepalive_timeout_seconds": 10, "reconnect_url": null, "connected_at": "now"})
 	eventsub.last_keepalive = now
-	_check(not eventsub._keepalive_timed_out(now + 10000), "welcome interval does not time out early")
-	_check(eventsub._keepalive_timed_out(now + 10001), "silent interval expires after welcome timeout")
+	_check(not eventsub._keepalive_timed_out(now + 15000), "welcome interval includes 1.5x grace")
+	_check(eventsub._keepalive_timed_out(now + 15001), "silent interval expires beyond grace")
 	var timestamp := Time.get_datetime_string_from_unix_time(int(Time.get_unix_time_from_system())) + "Z"
 	eventsub._data_received(JSON.stringify({"metadata": {"message_id": "keepalive-1", "message_type": "session_keepalive", "message_timestamp": timestamp}, "payload": {}}).to_utf8_buffer())
 	_check(not eventsub._keepalive_timed_out(Time.get_ticks_msec() + 9000), "valid keepalive resets silence timer")
 	eventsub.last_keepalive = 1
 	eventsub._data_received(JSON.stringify({"metadata": {"message_id": "keepalive-1", "message_type": "session_keepalive", "message_timestamp": timestamp}, "payload": {}}).to_utf8_buffer())
 	_check(eventsub.last_keepalive > 1, "duplicate valid keepalive still proves socket liveness")
-	_check(eventsub._keepalive_timed_out(Time.get_ticks_msec() + 11000), "silence after keepalive expires")
+	_check(eventsub._keepalive_timed_out(Time.get_ticks_msec() + 16000), "silence after keepalive expires")
 
 	var baseline: Dictionary = {}
 	var baseline_start := Time.get_ticks_usec()
@@ -42,6 +42,7 @@ func _run() -> void:
 	_check(not eventsub._message_got_processed("id-0") and eventsub._message_got_processed("id-9999"), "oldest IDs evict before newest")
 	print("UP05_BENCHMARK old_scan_usec=%d incremental_usec=%d workload=10000 unique IDs" % [baseline_usec, optimized_usec])
 	await _test_silent_socket(eventsub)
+	await _test_pause_and_long_frame()
 
 	var reconnect := TwitchReconnectMessage.new({"metadata": {"message_id": "reconnect-1", "message_type": "session_reconnect", "message_timestamp": timestamp}, "payload": {"session": {"id": "fixture", "status": "reconnecting", "keepalive_timeout_seconds": 10, "reconnect_url": "ws://127.0.0.1:1/ws", "connected_at": "now"}}})
 	eventsub._should_connect = true
@@ -107,7 +108,7 @@ func _test_silent_socket(eventsub: TwitchEventsub) -> void:
 		var reconnect := TwitchReconnectMessage.new({"metadata": {"message_id": "silent-reconnect", "message_type": "session_reconnect", "message_timestamp": timestamp}, "payload": {"session": {"id": "silent", "status": "reconnecting", "keepalive_timeout_seconds": 10, "reconnect_url": "ws://127.0.0.1:1/reconnect", "connected_at": "now"}}})
 		eventsub._handle_reconnect(reconnect)
 		eventsub.last_keepalive = Time.get_ticks_msec()
-		eventsub._check_keepalive(eventsub.last_keepalive + 11000)
+		eventsub._check_keepalive(eventsub.last_keepalive + 16000)
 		_check(eventsub.session == null and eventsub._client.auto_reconnect and eventsub._swap_over_client == null and not eventsub._swap_over_process, "silent open WebSocket cancels handover and triggers ordinary resubscription path")
 		# Keep the original peer alive but stop polling it: it cannot answer a close handshake.
 		var redial: WebSocketPeer
@@ -127,6 +128,60 @@ func _test_silent_socket(eventsub: TwitchEventsub) -> void:
 	if accepted != null:
 		accepted.close()
 	server.stop()
+
+
+func _test_pause_and_long_frame() -> void:
+	var server := TCPServer.new()
+	if server.listen(0, "127.0.0.1") != OK:
+		_check(false, "pause fixture binds loopback")
+		return
+	var eventsub := TwitchEventsub.new()
+	eventsub._client.connection_url = "ws://127.0.0.1:%d/ws" % server.get_local_port()
+	root.add_child(eventsub)
+	eventsub.open_connection()
+	var accepted: WebSocketPeer
+	var deadline := Time.get_ticks_msec() + 4000
+	while Time.get_ticks_msec() < deadline and not eventsub.is_open:
+		if server.is_connection_available():
+			accepted = WebSocketPeer.new()
+			accepted.accept_stream(server.take_connection())
+		if accepted != null:
+			accepted.poll()
+		await process_frame
+	_check(eventsub.is_open, "pause fixture completes WebSocket handshake")
+	if eventsub.is_open:
+		eventsub.session = TwitchEventsub.Session.new({"id": "healthy", "status": "connected", "keepalive_timeout_seconds": 10, "reconnect_url": null, "connected_at": "now"})
+		eventsub.last_keepalive = Time.get_ticks_msec()
+		var received: Array[String] = []
+		eventsub.event.connect(func(_type: StringName, data: Dictionary) -> void: received.append(data.marker))
+		paused = true
+		# Exceed even the grace interval without a packet: unpause must reset the clock.
+		await create_timer(16.0, true).timeout
+		var before_unpause := Time.get_ticks_msec()
+		paused = false
+		_check(eventsub.last_keepalive >= before_unpause, "unpause resets silence clock before processing resumes")
+		await process_frame
+		await process_frame
+		_check(eventsub.session != null and eventsub.is_open, "healthy session survives pause longer than watchdog interval")
+		if eventsub.session != null:
+			# Model an elapsed long frame with a notification already buffered by TCP.
+			eventsub.last_keepalive = Time.get_ticks_msec() - 16000
+			accepted.send_text(JSON.stringify({"metadata": {"message_id": "buffered-notification", "message_type": "notification", "subscription_type": "channel.follow", "subscription_version": "2", "message_timestamp": Time.get_datetime_string_from_unix_time(int(Time.get_unix_time_from_system())) + "Z"}, "payload": {"subscription": {"id": "fixture", "status": "enabled", "type": "channel.follow", "version": "2", "cost": 0, "condition": {}, "transport": {"method": "websocket", "session_id": "healthy"}, "created_at": "now"}, "event": {"marker": "delivered"}}}))
+			accepted.poll()
+			OS.delay_msec(30)
+			await process_frame
+			await process_frame
+			_check(eventsub.session != null and eventsub.is_open, "buffered notification is read before long-frame watchdog check")
+			_check(received == ["delivered"], "buffered notification is delivered without loss")
+			var reconnect := TwitchReconnectMessage.new({"metadata": {"message_id": "priority-reconnect", "message_type": "session_reconnect", "message_timestamp": Time.get_datetime_string_from_unix_time(int(Time.get_unix_time_from_system())) + "Z"}, "payload": {"session": {"id": "healthy", "status": "reconnecting", "keepalive_timeout_seconds": 10, "reconnect_url": "ws://127.0.0.1:1/ws", "connected_at": "now"}}})
+			eventsub._handle_reconnect(reconnect)
+			_check(eventsub._swap_over_client.process_priority < eventsub.process_priority, "handover client also polls before watchdog")
+	eventsub.close_connection()
+	eventsub.free()
+	if accepted != null:
+		accepted.close(-1)
+	server.stop()
+	await process_frame
 
 
 func _check(condition: bool, label: String) -> void:
