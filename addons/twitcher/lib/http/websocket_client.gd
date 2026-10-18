@@ -144,6 +144,14 @@ func close(status: int = 1000, message: String = "Normal Closure") -> void:
 	_peer.close(status, message)
 
 
+## Immediately drops an unresponsive peer without waiting for a close handshake.
+func abort() -> void:
+	_generation += 1
+	auto_reconnect = false
+	_cancel_connection_wait()
+	_peer.close(-1)
+
+
 # === LOGGER ===
 static var logger: Dictionary = {}
 static func set_logger(error: Callable, info: Callable, debug: Callable) -> void:

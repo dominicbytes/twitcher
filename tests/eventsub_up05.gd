@@ -109,6 +109,20 @@ func _test_silent_socket(eventsub: TwitchEventsub) -> void:
 		eventsub.last_keepalive = Time.get_ticks_msec()
 		eventsub._check_keepalive(eventsub.last_keepalive + 11000)
 		_check(eventsub.session == null and eventsub._client.auto_reconnect and eventsub._swap_over_client == null and not eventsub._swap_over_process, "silent open WebSocket cancels handover and triggers ordinary resubscription path")
+		# Keep the original peer alive but stop polling it: it cannot answer a close handshake.
+		var redial: WebSocketPeer
+		deadline = Time.get_ticks_msec() + 4000
+		while Time.get_ticks_msec() < deadline and not (redial != null and redial.get_ready_state() == WebSocketPeer.STATE_OPEN and eventsub._client.is_open):
+			if server.is_connection_available():
+				redial = WebSocketPeer.new()
+				redial.accept_stream(server.take_connection())
+			if redial != null:
+				redial.poll()
+			await process_frame
+		_check(redial != null, "watchdog redials TCP despite an unresponsive old peer")
+		_check(redial != null and redial.get_ready_state() == WebSocketPeer.STATE_OPEN and eventsub._client.is_open, "redial completes a new WebSocket handshake")
+		if redial != null:
+			redial.close(-1)
 	eventsub.close_connection()
 	if accepted != null:
 		accepted.close()
