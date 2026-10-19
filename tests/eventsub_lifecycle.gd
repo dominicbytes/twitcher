@@ -56,6 +56,10 @@ func _run() -> void:
 	_check(not pending_client._is_already_connecting, "close cancels pending connection wait")
 	pending_client.open_connection()
 	_check(pending_client._connection_wait != null and pending_client._connection_wait != cancelled_wait, "reopen starts a fresh connection wait")
+	pending_client.abort()
+	_check(not pending_client._is_already_connecting and not pending_client.auto_reconnect, "abort cancels pending wait and reconnect intent")
+	pending_client.open_connection()
+	_check(pending_client._connection_wait != null, "reopen after abort starts a fresh wait")
 	pending_client.close()
 	pending_client.free()
 	await create_timer(1.2).timeout

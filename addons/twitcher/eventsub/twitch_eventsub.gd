@@ -186,7 +186,7 @@ func _check_keepalive(now_msec: int) -> void:
 	session = null
 	last_keepalive = 0
 	_discard_pending_handover()
-	_client.close(1000, "EventSub keepalive timeout")
+	_client.abort()
 	_client.auto_reconnect = true
 
 
