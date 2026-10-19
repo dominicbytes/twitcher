@@ -138,6 +138,7 @@ class SubscriptionAction extends RefCounted:
 
 
 func _init() -> void:
+	_client.process_priority = -1
 	_client.connection_url = eventsub_live_server_url
 	_client.message_received.connect(_data_received.bind(_client))
 	_client.connection_established.connect(_on_connection_established)
@@ -147,6 +148,8 @@ func _init() -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_UNPAUSED:
+		last_keepalive = Time.get_ticks_msec()
 	if what == NOTIFICATION_PREDELETE:
 		if not _client_was_parented and is_instance_valid(_client):
 			_client.free()
@@ -200,7 +203,7 @@ func _check_keepalive(now_msec: int) -> void:
 
 
 func _keepalive_timed_out(now_msec: int) -> bool:
-	return session != null and last_keepalive > 0 and now_msec - last_keepalive > maxi(10, session.keepalive_timeout_seconds) * 1000
+	return session != null and last_keepalive > 0 and now_msec - last_keepalive > maxi(10, session.keepalive_timeout_seconds) * 1500
 
 
 ## Propergated call from twitch service
@@ -449,6 +452,7 @@ func _handle_reconnect(reconnect_message: TwitchReconnectMessage):
 	_swap_over_process = true
 	var reconnect_url = reconnect_message.payload.session.reconnect_url
 	_swap_over_client = WebsocketClient.new()
+	_swap_over_client.process_priority = -1
 	_swap_over_client.message_received.connect(_data_received.bind(_swap_over_client))
 	_swap_over_client.connection_established.connect(_on_connection_established)
 	_swap_over_client.connection_closed.connect(_on_connection_closed.bind(_swap_over_client))
