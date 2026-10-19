@@ -82,6 +82,28 @@ func _run() -> void:
 	test_mode.free()
 	_check(not is_instance_valid(parented_test_client), "parented test client freed once")
 
+	var unsetup := TwitchEventsub.new()
+	root.add_child(unsetup)
+	# Hold action execution so unsubscribe requests can be inspected without HTTP.
+	unsetup._executing_action_stack = true
+	var subscriptions: Array[TwitchEventsubConfig] = []
+	for index: int in 4:
+		var config := TwitchEventsubConfig.new()
+		config.type = TwitchEventsubDefinition.Type.CHANNEL_FOLLOW
+		subscriptions.append(config)
+		unsetup._subscriptions.append(config)
+	unsetup.do_unsetup()
+	_check(unsetup.get_subscriptions().is_empty(), "unsetup removes every subscription")
+	_check(unsetup._action_stack.size() == subscriptions.size(), "unsetup queues every unsubscribe")
+	var all_queued := true
+	for subscription: TwitchEventsubConfig in subscriptions:
+		var occurrences := 0
+		for action: TwitchEventsub.SubscriptionAction in unsetup._action_stack:
+			if not action.subscribe and action.subscription == subscription: occurrences += 1
+		all_queued = all_queued and occurrences == 1
+	_check(all_queued, "unsetup queues each original subscription exactly once")
+	unsetup.free()
+
 	var pending_client := WebsocketClient.new()
 	pending_client.connection_url = "ws://127.0.0.1:1/ws"
 	root.add_child(pending_client)
