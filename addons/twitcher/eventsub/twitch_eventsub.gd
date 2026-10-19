@@ -116,6 +116,7 @@ var last_keepalive: int
 var is_open: bool:
 	get(): return _client.is_open
 var _should_connect: bool
+var _resume_on_enter: bool
 
 ## When the Websocket server is shutting down and the client is doing a
 ## gracefull handover
@@ -166,10 +167,18 @@ func _ready() -> void:
 
 func _enter_tree() -> void:
 	if instance == null: instance = self
+	if _resume_on_enter:
+		_resume_on_enter = false
+		_should_connect = true
+		# Children start their waits when they enter, after this parent callback.
+		_client.auto_reconnect = true
+		if use_test_server: _test_client.auto_reconnect = true
 
 
 func _exit_tree() -> void:
+	var resume := _should_connect
 	close_connection()
+	_resume_on_enter = resume
 	if instance == self: instance = null
 
 
@@ -262,6 +271,7 @@ func open_connection() -> void:
 
 
 func close_connection() -> void:
+	_resume_on_enter = false
 	_should_connect = false
 	if is_instance_valid(_client): _client.close()
 	if is_instance_valid(_test_client): _test_client.close()

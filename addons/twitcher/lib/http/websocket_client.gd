@@ -34,6 +34,7 @@ var connection_state : WebSocketPeer.State = WebSocketPeer.STATE_CLOSED:
 @export var auto_reconnect: bool:
 	set(val):
 		auto_reconnect = val
+		if not val: _resume_on_enter = false
 		_logDebug("New auto_reconnect value: %s" % val)
 
 ## True if currently connecting to prevent 2 connectionen processes at the same time
@@ -45,6 +46,7 @@ var is_closed: bool:
 
 var _peer: WebSocketPeer = WebSocketPeer.new()
 var _tries: int
+var _resume_on_enter: bool
 var _generation: int
 var _connection_wait: SceneTreeTimer
 
@@ -83,15 +85,20 @@ func _establish_connection() -> void:
 
 
 func _enter_tree() -> void:
+	if _resume_on_enter:
+		auto_reconnect = true
+		_resume_on_enter = false
 	if auto_reconnect: open_connection()
 
 
 func _exit_tree() -> void:
+	var resume := auto_reconnect
 	_generation += 1
 	auto_reconnect = false
 	_cancel_connection_wait()
-	if not is_open: return
-	_peer.close(1000, "resource got freed")
+	# Detached nodes cannot poll a graceful close handshake.
+	_peer.close(-1)
+	_resume_on_enter = resume
 
 
 func _cancel_connection_wait() -> void:
