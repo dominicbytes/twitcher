@@ -29,10 +29,13 @@ func validate_token(access_token: String = "") -> BufferedHTTPClient.ResponseDat
 		"Authorization": "OAuth %s" % access_token
 	}, "")
 	var response: BufferedHTTPClient.ResponseData = await _http_client.wait_for_request(validation_request)
-	if response.response_code != 200:
+	if response.response_code == 401:
 		logInfo("Token (%s) is not valid anymore. Tokens got reset please reauthenticate! Twitch: %s " % [ token, response.response_data.get_string_from_utf8() ] )
 		token.remove_tokens()
 		unauthenticated.emit()
+		return response
+	if response.response_code != 200:
+		logInfo("Token validation failed with HTTP %s; preserving credentials." % response.response_code)
 		return response
 
 	var response_string: String = response.response_data.get_string_from_utf8();

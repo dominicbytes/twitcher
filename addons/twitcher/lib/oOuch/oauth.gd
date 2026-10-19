@@ -391,7 +391,7 @@ func _process_implicit_request(client: OAuthHTTPServer.Client, server: OAuthHTTP
 			var token: String = OAuth.DEBUGGER_PROTECTION + access_token
 			var validation_response: BufferedHTTPClient.ResponseData = await token_handler.validate_token(token)
 
-			if validation_response.response_data:
+			if validation_response.response_code == 200 and validation_response.response_data:
 				var validation_data: Dictionary = JSON.parse_string(validation_response.response_data.get_string_from_utf8())
 				token_handler.update_tokens(token, "", validation_data.get("expires_in", expires_in), scopes)
 		else:

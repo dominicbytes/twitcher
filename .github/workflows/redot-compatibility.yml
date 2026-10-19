@@ -50,11 +50,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for script in eventsub_lifecycle eventsub_up05 redot_compatibility; do
+          for script in eventsub_lifecycle eventsub_up05 redot_compatibility token_validation; do
             log="$RUNNER_TEMP/redot-$script.log"
             timeout 60s "$REDOT_BIN" --headless --path . --script "res://tests/$script.gd" --quit-after 10000 2>&1 | tee "$log"
             if grep -E 'ERROR:|WARNING:|Parse Error|Failed to load script|Failed loading resource' "$log"; then
               exit 1
             fi
-            grep -E 'TWITCHER (LIFECYCLE|UP05) PASS|Twitcher Redot compatibility probe passed' "$log"
+            grep -E 'TWITCHER (LIFECYCLE|UP05|TOKEN VALIDATION) PASS|Twitcher Redot compatibility probe passed' "$log"
           done
