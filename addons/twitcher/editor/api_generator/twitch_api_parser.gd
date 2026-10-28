@@ -36,6 +36,12 @@ class ComponentRepo extends RefCounted:
 
 func _ready() -> void:
 	client.name = "APIGeneratorClient"
+
+
+func _notification(what: int) -> void:
+	# parse_api parents the client only while a request runs.
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(client) and client.get_parent() == null:
+		client.free()
 	
 
 func parse_api() -> void:
