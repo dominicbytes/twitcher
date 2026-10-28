@@ -24,7 +24,7 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
+	if what == NOTIFICATION_PREDELETE and oauth_token != null and oauth_token.authorized.is_connected(_on_authorized):
 		oauth_token.authorized.disconnect(_on_authorized)
 
 func _pressed() -> void:
