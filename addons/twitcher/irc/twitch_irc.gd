@@ -166,6 +166,12 @@ func _ready() -> void:
 	add_child(_client)
 
 
+func _notification(what: int) -> void:
+	# The client is only parented in _ready; free it when this node never entered the tree.
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(_client) and _client.get_parent() == null:
+		_client.free()
+
+
 func _on_authorized() -> void:
 	log.i("Token got authorized reconnect to irc? Client Closed: %s, Auto Reconnect enabled: %s" % [_client.is_closed, _client.auto_reconnect])
 	if _client.is_closed and _auto_reconnect:
